@@ -3,7 +3,6 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const LocalStrategy = require("passport-local").Strategy;
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
-const { Strategy, ExtractJwt } = require("passport-jwt");
 
 // Google Strategy
 passport.use(
@@ -51,7 +50,7 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => {
-  done(null, user.id); // Store user id in session
+  done(null, user._id); // Store user id in session
 });
 
 passport.deserializeUser(async (id, done) => {
@@ -89,26 +88,6 @@ passport.use(
       }
     }
   )
-);
-
-const opts = {
-  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: process.env.JWT_SECRET, // Secret used to sign JWT
-};
-
-passport.use(
-  new Strategy(opts, async (jwt_payload, done) => {
-    try {
-      // Find the user based on the JWT payload's user ID
-      const user = await User.findById(jwt_payload.id);
-      if (!user) {
-        return done(null, false, { message: "User not found" });
-      }
-      return done(null, user);
-    } catch (error) {
-      return done(error, false);
-    }
-  })
 );
 
 module.exports = passport;

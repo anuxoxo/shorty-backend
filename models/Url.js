@@ -10,7 +10,6 @@ const urlSchema = new mongoose.Schema(
     originalUrl: { type: String, required: true },
     shortUrl: { type: String, required: true },
     clickCount: { type: Number, default: 0 },
-    expiryDate: { type: Date, default: null }, // Date when the URL expires
   },
   { timestamps: true }
 );

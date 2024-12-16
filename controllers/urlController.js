@@ -4,10 +4,11 @@ const Url = require("../models/Url");
 
 const shortenUrl = async (req, res) => {
   try {
+    // Validate request body
     await body("originalUrl")
-      .isURL()
-      .withMessage("Invalid URL format")
-      .normalizeURL()
+      .isURL({ require_protocol: true }) // Ensure HTTP/HTTPS is present
+      .withMessage("Please provide a valid URL (with http/https).")
+      .trim()
       .run(req);
 
     const errors = validationResult(req);
@@ -18,51 +19,97 @@ const shortenUrl = async (req, res) => {
     const { originalUrl } = req.body;
     const userId = req.user.id;
 
-    const existingUrl = await Url.findOne({ originalUrl, userId });
+    // Normalize URL (e.g., remove trailing slashes)
+    const normalizedUrl = new URL(originalUrl).href;
+
+    // Check if URL already exists for the user
+    const existingUrl = await Url.findOne({
+      originalUrl: normalizedUrl,
+      userId,
+    });
     if (existingUrl) {
-      return res.status(400).json({ error: "URL already shortened." });
+      return res.status(200).json(existingUrl);
     }
 
-    const shortUrl = shortid.generate();
+    // Generate a unique short URL
+    let shortUrl;
+    do {
+      shortUrl = shortid.generate();
+    } while (await Url.findOne({ shortUrl })); // Ensure uniqueness (rare, but possible)
+
+    // Save new URL to the database
     const newUrl = new Url({
       userId,
-      originalUrl,
+      originalUrl: normalizedUrl,
       shortUrl,
     });
 
     await newUrl.save();
-    res.json({ shortUrl, originalUrl });
+
+    // Respond with the shortened URL
+    res.status(201).json({
+      message: "URL successfully shortened!",
+      data: {
+        shortUrl,
+        originalUrl: normalizedUrl,
+      },
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error in shortenUrl:", error);
+
+    // Generic error response
     res
       .status(500)
-      .json({ error: "Something went wrong while shortening the URL." });
+      .json({ error: "An internal error occurred. Please try again later." });
   }
 };
 
 const getOriginalUrl = async (req, res) => {
   const { shortUrl } = req.params;
-  const url = await Url.findOne({ shortUrl });
+  console.log("shortUrl:", shortUrl);
 
-  if (!url) {
-    return res.status(404).json({ error: "URL not found." });
+  try {
+    // Find the URL document by shortUrl
+    const url = await Url.findOne({ shortUrl });
+
+    // If the URL is not found in the database
+    if (!url) {
+      return res.send("URL not found.");
+    }
+
+    // Increment the click count
+    url.clickCount += 1;
+    await url.save();
+
+    // Redirect to the original URL
+    res.redirect(url.originalUrl);
+  } catch (error) {
+    console.error("Error in getOriginalUrl:", error);
+    res.status(500).json({ error: "Internal server error." });
   }
-
-  if (url.expiryDate && new Date() > new Date(url.expiryDate)) {
-    return res.status(410).json({ error: "This URL has expired." });
-  }
-
-  // Increment the click count
-  url.clickCount += 1;
-  await url.save();
-
-  res.redirect(url.originalUrl);
 };
 
 const manageUrls = async (req, res) => {
-  const userId = req.user.id;
-  const urls = await Url.find({ userId });
-  res.json(urls);
+  try {
+    // Check if user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: "Unauthorized access" });
+    }
+
+    // Query the database to find all URLs associated with the user
+    const userUrls = await Url.find({ userId: req.user.id }).lean();
+
+    // Handle case where no URLs are found
+    if (!userUrls.length) {
+      return res.status(200).json({ message: "No URLs found", urls: [] });
+    }
+
+    // Return the user's URLs
+    res.status(200).json(userUrls);
+  } catch (error) {
+    console.error("Error in manageUrls:", error.message, error.stack);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 const deleteUrl = async (req, res) => {
@@ -78,42 +125,9 @@ const deleteUrl = async (req, res) => {
   res.json({ message: "URL deleted successfully." });
 };
 
-const getStatistics = async (req, res) => {
-  const userId = req.user.id;
-  const urls = await Url.find({ userId });
-
-  const statistics = urls.map((url) => ({
-    originalUrl: url.originalUrl,
-    shortUrl: url.shortUrl,
-    clickCount: url.clickCount,
-  }));
-
-  res.json({ statistics });
-};
-
-// New function to get Top URLs based on click count
-const getTopUrls = async (req, res) => {
-  // Retrieve the top 10 URLs ordered by click count in descending order
-  const topUrls = await Url.find().sort({ clickCount: -1 }).limit(10);
-
-  if (!topUrls.length) {
-    return res.status(404).json({ message: "No top URLs found." });
-  }
-
-  const topUrlsData = topUrls.map((url) => ({
-    originalUrl: url.originalUrl,
-    shortUrl: url.shortUrl,
-    clickCount: url.clickCount,
-  }));
-
-  res.json({ topUrls: topUrlsData });
-};
-
 module.exports = {
   shortenUrl,
   getOriginalUrl,
   manageUrls,
   deleteUrl,
-  getStatistics,
-  getTopUrls,
 };
