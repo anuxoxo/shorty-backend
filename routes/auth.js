@@ -14,15 +14,20 @@ router.get(
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
-// Google callback route
+// Google Authentication Callback Route
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/" }),
+  passport.authenticate("google", {
+    failureRedirect: process.env.FRONTEND_URL + "/login",
+  }),
   (req, res) => {
+    // Generate a JWT token upon successful Google authentication
     const token = jwt.sign({ userId: req.user.id }, process.env.JWT_SECRET, {
       expiresIn,
     });
-    res.redirect(`http://localhost:3000/?token=${token}`);
+
+    // Redirect to the frontend with the token in the query parameters
+    res.redirect(`${process.env.FRONTEND_URL}/google/callback?token=${token}`);
   }
 );
 

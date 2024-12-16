@@ -7,6 +7,7 @@ const morgan = require("morgan");
 const winston = require("winston");
 const helmet = require("helmet");
 const compression = require("compression");
+const session = require("express-session");
 
 const authRoutes = require("./routes/auth");
 const urlRoutes = require("./routes/url");
@@ -17,13 +18,12 @@ require("./config/passport"); // Import the passport configuration
 
 const app = express();
 app.use(express.json());
-app.use(passport.initialize());
 app.use(morgan("combined")); // Log all HTTP requests
 app.use(helmet()); // This will automatically set security-related HTTP headers
 app.use(compression()); // Compress all responses
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 60 * 1000, // 15 minutes
   max: 20, // limit each IP to 10 requests per windowMs
   message: "Too many requests, please try again later.",
 });
@@ -33,8 +33,21 @@ const corsOptions = {
   origin: ["https://your-frontend-domain.com", "http://localhost:3000"], // allow specific domains
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type,Authorization",
+  credentials: true,
 };
 app.use(cors(corsOptions));
+
+// Set up express-session middleware
+app.use(
+  session({
+    secret: process.env.JWT_SECRET, // Choose a secret for your session
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 //  create custom logger for errors
 

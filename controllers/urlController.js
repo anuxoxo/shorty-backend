@@ -3,34 +3,41 @@ const { body, validationResult } = require("express-validator");
 const Url = require("../models/Url");
 
 const shortenUrl = async (req, res) => {
-  await body("originalUrl")
-    .isURL()
-    .withMessage("Invalid URL format")
-    .normalizeURL()
-    .run(req);
+  try {
+    await body("originalUrl")
+      .isURL()
+      .withMessage("Invalid URL format")
+      .normalizeURL()
+      .run(req);
 
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { originalUrl } = req.body;
+    const userId = req.user.id;
+
+    const existingUrl = await Url.findOne({ originalUrl, userId });
+    if (existingUrl) {
+      return res.status(400).json({ error: "URL already shortened." });
+    }
+
+    const shortUrl = shortid.generate();
+    const newUrl = new Url({
+      userId,
+      originalUrl,
+      shortUrl,
+    });
+
+    await newUrl.save();
+    res.json({ shortUrl, originalUrl });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ error: "Something went wrong while shortening the URL." });
   }
-
-  const { originalUrl } = req.body;
-  const userId = req.user.id;
-
-  const existingUrl = await Url.findOne({ originalUrl, userId });
-  if (existingUrl) {
-    return res.status(400).json({ error: "URL already shortened." });
-  }
-
-  const shortUrl = shortid.generate();
-  const newUrl = new Url({
-    userId,
-    originalUrl,
-    shortUrl,
-  });
-
-  await newUrl.save();
-  res.json({ shortUrl, originalUrl });
 };
 
 const getOriginalUrl = async (req, res) => {
@@ -39,6 +46,10 @@ const getOriginalUrl = async (req, res) => {
 
   if (!url) {
     return res.status(404).json({ error: "URL not found." });
+  }
+
+  if (url.expiryDate && new Date() > new Date(url.expiryDate)) {
+    return res.status(410).json({ error: "This URL has expired." });
   }
 
   // Increment the click count
