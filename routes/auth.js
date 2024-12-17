@@ -3,6 +3,7 @@ const passport = require("passport");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const cookie = require("cookie");
 
 const router = express.Router();
 
@@ -189,12 +190,36 @@ router.get(
       });
 
       // Redirect to frontend with access token or send it as part of response
-      res.redirect(`${process.env.FRONTEND_URL}/google/callback?token=${accessToken}`);
+      res.redirect(
+        `${process.env.FRONTEND_URL}/google/callback?token=${accessToken}`
+      );
     } catch (error) {
       console.error("Error during Google callback:", error);
       res.status(500).json({ error: "Google authentication failed." });
     }
   }
 );
+
+router.get("/logout", (req, res) => {
+  // Get all cookies from the request
+  const cookies = req.cookies;
+
+  // Loop through all cookies and clear them
+  for (let cookieName in cookies) {
+    if (cookies.hasOwnProperty(cookieName)) {
+      // Remove each cookie by setting the expiration to a time in the past
+      res.cookie(cookieName, "", {
+        maxAge: 0, // Expire immediately
+        path: "/", // Set path to root to clear cookies in all routes
+        httpOnly: true, // Secure cookie flag
+        secure: process.env.NODE_ENV === "production", // Ensure it's only secure in production
+      });
+    }
+  }
+
+  return res.json({
+    message: "Logout successful",
+  });
+});
 
 module.exports = router;
