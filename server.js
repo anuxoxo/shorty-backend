@@ -8,6 +8,7 @@ const morgan = require("morgan");
 const winston = require("winston");
 const helmet = require("helmet");
 const compression = require("compression");
+const cookieParser = require("cookie-parser"); // Import cookie-parser
 
 const authRoutes = require("./routes/auth");
 const urlRoutes = require("./routes/url");
@@ -27,6 +28,7 @@ app.use(
     saveUninitialized: true,
   })
 );
+app.use(cookieParser());
 
 const corsOptions = {
   origin: ["https://your-frontend-domain.com", "http://localhost:3000"], // allow specific domains

@@ -5,7 +5,7 @@ const {
   manageUrls,
   deleteUrl,
 } = require("../controllers/urlController");
-const { authenticate } = require("../middlewares/auth");
+const authenticate = require("../middlewares/auth");
 
 const router = express.Router();
 
