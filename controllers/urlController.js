@@ -17,6 +17,7 @@ const shortenUrl = async (req, res) => {
     }
 
     const { originalUrl } = req.body;
+    console.log("shorten: ", req.user);
     const userId = req.user.id;
 
     // Normalize URL (e.g., remove trailing slashes)

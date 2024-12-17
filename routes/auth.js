@@ -101,17 +101,28 @@ router.post("/refresh-token", (req, res) => {
   });
 });
 
-// Logout Route
-router.post("/logout", (req, res) => {
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "Strict",
-  });
-  return res.json({ message: "Logged out successfully." });
+// user details
+router.get("/user-details", verifyAccessToken, async (req, res) => {
+  try {
+    const userId = req.user;
+
+    const user = await User.findById(userId).select("-password"); // Exclude password from the response
+
+    // If no user found, send an error
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Send the user details as the response
+    return res.json({
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-// Protected Route
 router.get("/protected", verifyAccessToken, (req, res) => {
   res.json({ message: "You have access to this route", userId: req.user });
 });
@@ -142,5 +153,48 @@ router.post("/register", async (req, res) => {
     return res.status(500).json({ error: "Registration failed." });
   }
 });
+
+// Google login route
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+// Google Authentication Callback Route
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: process.env.FRONTEND_URL + "/login",
+  }),
+  async (req, res) => {
+    try {
+      // On successful login, user information will be available in req.user
+      const { googleId, email, displayName } = req.user; // These are typically available after successful Google OAuth
+
+      // Check if the user already exists in the database using Google ID
+      let user = await User.findOne({ googleId });
+
+      if (!user) {
+      }
+
+      // Generate JWT tokens after user login or creation
+      const accessToken = generateAccessToken(user._id);
+      const refreshToken = generateRefreshToken(user._id);
+
+      // Optionally, store refresh token in a secure cookie or session
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // Set secure cookies in production
+        sameSite: "Strict",
+      });
+
+      // Redirect to frontend with access token or send it as part of response
+      res.redirect(`${process.env.FRONTEND_URL}/google/callback?token=${accessToken}`);
+    } catch (error) {
+      console.error("Error during Google callback:", error);
+      res.status(500).json({ error: "Google authentication failed." });
+    }
+  }
+);
 
 module.exports = router;
