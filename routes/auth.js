@@ -3,7 +3,6 @@ const passport = require("passport");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const cookie = require("cookie");
 
 const router = express.Router();
 
@@ -14,6 +13,8 @@ const JWT_REFRESH_SECRET =
 // Token Expiry Times
 const ACCESS_TOKEN_EXPIRY = "1h";
 const REFRESH_TOKEN_EXPIRY = "7d";
+
+const REFRESH_TOKEN_NAME = "shorty-url-shortener-refreshToken";
 
 // Utility Functions
 const generateAccessToken = (userId) => {
@@ -56,7 +57,7 @@ router.post("/login", async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    res.cookie("refreshToken", refreshToken, {
+    res.cookie(REFRESH_TOKEN_NAME, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Strict",
@@ -92,7 +93,7 @@ router.post("/refresh-token", (req, res) => {
     const newRefreshToken = generateRefreshToken(decoded.userId);
 
     // Rotate the refresh token
-    res.cookie("refreshToken", newRefreshToken, {
+    res.cookie(REFRESH_TOKEN_NAME, newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Strict",
