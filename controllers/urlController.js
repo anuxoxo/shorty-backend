@@ -126,9 +126,55 @@ const deleteUrl = async (req, res) => {
   res.json({ message: "URL deleted successfully." });
 };
 
+const editUrl = async (req, res) => {
+  const { shortUrl } = req.params;
+  const { originalUrl } = req.body;
+
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    // Check if the shortUrl exists
+    const url = await Url.findOne({ shortUrl, userId: req.user });
+    if (!url) {
+      return res.status(404).json({ error: "URL not found." });
+    }
+
+    // Normalize the new URL
+    const normalizedUrl = new URL(originalUrl).href;
+
+    // Check if the new URL is different
+    if (url.originalUrl === normalizedUrl) {
+      return res
+        .status(400)
+        .json({ error: "New URL is the same as the original one." });
+    }
+
+    // Update the URL
+    url.originalUrl = normalizedUrl;
+    await url.save();
+
+    res.status(200).json({
+      message: "URL updated successfully!",
+      data: {
+        shortUrl,
+        originalUrl: normalizedUrl,
+      },
+    });
+  } catch (error) {
+    console.error("Error in editUrl:", error);
+    res
+      .status(500)
+      .json({ error: "An internal error occurred while updating the URL." });
+  }
+};
+
 module.exports = {
   shortenUrl,
   getOriginalUrl,
   manageUrls,
   deleteUrl,
+  editUrl,
 };
