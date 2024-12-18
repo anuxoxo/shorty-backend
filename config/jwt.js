@@ -8,8 +8,8 @@ const JWT_REFRESH_SECRET =
 const ACCESS_TOKEN_EXPIRY = "3d";
 const REFRESH_TOKEN_EXPIRY = "7d";
 
-const ACCESS_TOKEN_NAME = "shorty-url-shortener-accessToken";
-const REFRESH_TOKEN_NAME = "shorty-url-shortener-refreshToken";
+const ACCESS_TOKEN_NAME = "shorty-url-shortener-access-token";
+const REFRESH_TOKEN_NAME = "shorty-url-shortener-refresh-token";
 
 // Utility Functions
 const generateAccessToken = (userId) => {
