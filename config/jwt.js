@@ -34,15 +34,15 @@ const verifyAccessToken = (req, res, next) => {
   }
 
   // Verify the token
-  jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
+  jwt.verify(token, JWT_ACCESS_SECRET, (err, decoded) => {
     if (err) {
+      console.error(err);
       return res
         .status(403)
         .json({ success: false, message: "Invalid access token." });
     }
-
     // Attach decoded user to the request object
-    req.user = decoded.user;
+    req.userId = decoded.userId;
     next();
   });
 };

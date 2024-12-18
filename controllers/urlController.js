@@ -13,12 +13,15 @@ const shortenUrl = async (req, res) => {
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        success: false,
+        message: "Error occurred",
+        errors: errors.array(),
+      });
     }
 
     const { originalUrl } = req.body;
-    console.log("shorten: ", req.user);
-    const userId = req.user.id;
+    const userId = req.userId;
 
     // Normalize URL (e.g., remove trailing slashes)
     const normalizedUrl = new URL(originalUrl).href;
@@ -29,7 +32,11 @@ const shortenUrl = async (req, res) => {
       userId,
     });
     if (existingUrl) {
-      return res.status(200).json(existingUrl);
+      return res.status(200).json({
+        success: true,
+        message: "URL already exists",
+        data: existingUrl,
+      });
     }
 
     // Generate a unique short URL
@@ -49,6 +56,7 @@ const shortenUrl = async (req, res) => {
 
     // Respond with the shortened URL
     res.status(201).json({
+      success: true,
       message: "URL successfully shortened!",
       data: {
         shortUrl,
@@ -58,22 +66,19 @@ const shortenUrl = async (req, res) => {
   } catch (error) {
     console.error("Error in shortenUrl:", error);
 
-    // Generic error response
-    res
-      .status(500)
-      .json({ error: "An internal error occurred. Please try again later." });
+    res.status(500).json({
+      success: false,
+      message: "An internal error occurred. Please try again later.",
+    });
   }
 };
 
 const getOriginalUrl = async (req, res) => {
   const { shortUrl } = req.params;
-  console.log("shortUrl:", shortUrl);
 
   try {
-    // Find the URL document by shortUrl
     const url = await Url.findOne({ shortUrl });
 
-    // If the URL is not found in the database
     if (!url) {
       return res.send("URL not found.");
     }
@@ -86,44 +91,46 @@ const getOriginalUrl = async (req, res) => {
     res.redirect(url.originalUrl);
   } catch (error) {
     console.error("Error in getOriginalUrl:", error);
-    res.status(500).json({ error: "Internal server error." });
+    res.status(500).json({ success: true, message: "Internal server error." });
   }
 };
 
 const manageUrls = async (req, res) => {
   try {
     // Check if user is authenticated
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ error: "Unauthorized access" });
+    const userId = req.userId;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthorized access" });
     }
 
     // Query the database to find all URLs associated with the user
-    const userUrls = await Url.find({ userId: req.user.id }).lean();
-
-    // Handle case where no URLs are found
-    if (!userUrls.length) {
-      return res.status(200).json({ message: "No URLs found", urls: [] });
-    }
+    const userUrls = await Url.find({ userId }).lean();
 
     // Return the user's URLs
-    res.status(200).json(userUrls);
+    res.status(200).json({
+      success: true,
+      message: "Urls were found",
+      data: userUrls,
+    });
   } catch (error) {
     console.error("Error in manageUrls:", error.message, error.stack);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
 const deleteUrl = async (req, res) => {
   const { shortUrl } = req.params;
-  const userId = req.user.id;
+  const userId = req.userId;
 
   const url = await Url.findOneAndDelete({ shortUrl, userId });
 
   if (!url) {
-    return res.status(404).json({ error: "URL not found." });
+    return res.status(404).json({ success: false, message: "URL not found." });
   }
 
-  res.json({ message: "URL deleted successfully." });
+  res.json({ success: true, message: "URL deleted successfully." });
 };
 
 const editUrl = async (req, res) => {
@@ -133,13 +140,19 @@ const editUrl = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({
+        success: false,
+        message: "Some error occurred!",
+        errors: errors.array(),
+      });
     }
 
     // Check if the shortUrl exists
-    const url = await Url.findOne({ shortUrl, userId: req.user });
+    const url = await Url.findOne({ shortUrl, userId: req.userId });
     if (!url) {
-      return res.status(404).json({ error: "URL not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "URL not found." });
     }
 
     // Normalize the new URL
@@ -147,9 +160,10 @@ const editUrl = async (req, res) => {
 
     // Check if the new URL is different
     if (url.originalUrl === normalizedUrl) {
-      return res
-        .status(400)
-        .json({ error: "New URL is the same as the original one." });
+      return res.status(400).json({
+        success: false,
+        message: "New URL is the same as the original one.",
+      });
     }
 
     // Update the URL
@@ -157,6 +171,7 @@ const editUrl = async (req, res) => {
     await url.save();
 
     res.status(200).json({
+      success: true,
       message: "URL updated successfully!",
       data: {
         shortUrl,
@@ -165,9 +180,10 @@ const editUrl = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in editUrl:", error);
-    res
-      .status(500)
-      .json({ error: "An internal error occurred while updating the URL." });
+    res.status(500).json({
+      success: false,
+      message: "An internal error occurred while updating the URL.",
+    });
   }
 };
 

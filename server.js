@@ -23,7 +23,7 @@ app.use(helmet()); // This will automatically set security-related HTTP headers
 app.use(compression()); // Compress all responses
 app.use(
   session({
-    secret: process.env.JWT_SECRET, // Your secret key
+    secret: process.env.JWT_ACCESS_SECRET,
     resave: false,
     saveUninitialized: true,
   })

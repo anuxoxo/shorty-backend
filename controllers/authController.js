@@ -43,7 +43,7 @@ const localLogin = async (req, res) => {
 
     // Set cookies (HTTP-only, Secure, SameSite)
     setCookies(res, REFRESH_TOKEN_NAME, refreshToken);
-    setCookies(res, ACCESS_TOKEN_NAME, accessToken, 72); 
+    setCookies(res, ACCESS_TOKEN_NAME, accessToken, 72);
 
     return res.status(200).json({
       success: true,
@@ -121,7 +121,7 @@ const googleLoginCallback = async (req, res) => {
 
     // Check if the user already exists in the database using email
     let user = await User.findOne({ email });
-
+    
     // Generate JWT tokens after user login or creation
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
