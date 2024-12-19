@@ -31,7 +31,7 @@ app.use(
 app.use(cookieParser());
 
 const corsOptions = {
-  origin: [FRONTEND_URL], // allow specific domains
+  origin: [process.env.FRONTEND_URL], // allow specific domains
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type,Authorization",
   credentials: true,
