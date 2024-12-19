@@ -31,7 +31,7 @@ app.use(
 app.use(cookieParser());
 
 const corsOptions = {
-  origin: ["https://your-frontend-domain.com", "http://localhost:3000"], // allow specific domains
+  origin: [FRONTEND_URL], // allow specific domains
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type,Authorization",
   credentials: true,
